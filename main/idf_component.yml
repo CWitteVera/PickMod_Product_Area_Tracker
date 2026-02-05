@@ -1,0 +1,7 @@
+## IDF Component Manager Manifest File
+## Dependencies for main component
+
+dependencies:
+  espressif/esp_lvgl_port: "^2.0.0"
+  # esp_lvgl_port v2.x provides LVGL v8.x support
+  # This matches the requirement for LVGL v8 parity with EEZ export
