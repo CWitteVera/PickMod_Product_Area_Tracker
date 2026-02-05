@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS 
+        "app_main.c"
+        "hal/display.c"
+    INCLUDE_DIRS 
+        "."
+        "hal"
+    REQUIRES 
+        driver
+        esp_lcd
+        esp_timer
+)
