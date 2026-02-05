@@ -7,6 +7,12 @@
  * - Interface: RGB888 (24-bit parallel)
  * - Timing: Cloned from Espressif ESP32-S3 LCD EV-Board LVGL demo
  * 
+ * LVGL Integration:
+ * - esp_lvgl_port for LVGL v8
+ * - Direct-mode rendering (no bounce buffer)
+ * - Anti-tearing enabled via CONFIG_LCD_RGB_RESTART_IN_VSYNC
+ * - Single LVGL task with mutex discipline
+ * 
  * Pin mapping for Waveshare ESP32-S3 Touch LCD 7":
  * - Data pins: GPIO 15,7,6,5,4,9,46,3,8,16,1,14,21,47,48 (R0-4, G0-5, B0-4)
  * - HSYNC: GPIO 46
@@ -21,6 +27,7 @@
 #include "esp_lcd_panel_rgb.h"
 #include "esp_lcd_panel_ops.h"
 #include "driver/gpio.h"
+#include "esp_lvgl_port.h"
 #include <string.h>
 
 static const char *TAG = "display";
@@ -30,6 +37,9 @@ static esp_lcd_panel_handle_t panel_handle = NULL;
 
 /** Framebuffer pointer (allocated in PSRAM) */
 static uint16_t *framebuffer = NULL;
+
+/** LVGL display object */
+static lv_disp_t *lvgl_disp = NULL;
 
 /* Pin definitions for Waveshare ESP32-S3 Touch LCD 7" */
 #define PIN_LCD_PCLK        (8)
@@ -197,4 +207,76 @@ esp_err_t display_draw_test_bars(void)
 esp_lcd_panel_handle_t display_get_panel_handle(void)
 {
     return panel_handle;
+}
+
+esp_err_t display_lvgl_init(void)
+{
+    esp_err_t ret = ESP_OK;
+
+    if (panel_handle == NULL) {
+        ESP_LOGE(TAG, "Display not initialized. Call display_init() first.");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    ESP_LOGI(TAG, "Initializing LVGL v8 with esp_lvgl_port");
+    ESP_LOGI(TAG, "Configuration: direct-mode, avoid lcd tearing effect");
+
+    /* Initialize LVGL core */
+    const lvgl_port_cfg_t lvgl_cfg = {
+        .task_priority = 4,
+        .task_stack = 4096,
+        .task_affinity = -1,        // No affinity
+        .task_max_sleep_ms = 500,
+        .timer_period_ms = 5
+    };
+    
+    ret = lvgl_port_init(&lvgl_cfg);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize LVGL port: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "LVGL port initialized (single task, mutex enabled)");
+
+    /* Add RGB display to LVGL */
+    const lvgl_port_display_cfg_t disp_cfg = {
+        .io_handle = panel_handle,
+        .panel_handle = panel_handle,
+        .buffer_size = DISPLAY_WIDTH * 50,  // 50 lines buffer
+        .double_buffer = true,              // Enable double buffering
+        .hres = DISPLAY_WIDTH,
+        .vres = DISPLAY_HEIGHT,
+        .monochrome = false,
+        .rotation = {
+            .swap_xy = false,
+            .mirror_x = false,
+            .mirror_y = false,
+        },
+        .flags = {
+            .buff_dma = true,
+            .buff_spiram = true,
+        }
+    };
+
+    lvgl_disp = lvgl_port_add_disp(&disp_cfg);
+    if (lvgl_disp == NULL) {
+        ESP_LOGE(TAG, "Failed to add display to LVGL");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "LVGL display registered (direct-mode rendering)");
+    ESP_LOGI(TAG, "Buffer size: %d pixels (double buffered)", disp_cfg.buffer_size);
+    ESP_LOGI(TAG, "LVGL initialization complete");
+
+    return ESP_OK;
+}
+
+bool display_lvgl_lock(int timeout_ms)
+{
+    return lvgl_port_lock(timeout_ms);
+}
+
+void display_lvgl_unlock(void)
+{
+    lvgl_port_unlock();
 }

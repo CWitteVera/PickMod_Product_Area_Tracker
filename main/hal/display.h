@@ -72,6 +72,33 @@ esp_err_t display_draw_test_bars(void);
  */
 esp_lcd_panel_handle_t display_get_panel_handle(void);
 
+/**
+ * @brief Initialize LVGL integration with esp_lvgl_port
+ * 
+ * Sets up LVGL v8 in direct-mode with anti-tearing, following
+ * the Espressif EV-Board LVGL demo configuration.
+ * Creates a single LVGL task with proper mutex discipline.
+ * 
+ * @note Must be called after display_init()
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t display_lvgl_init(void);
+
+/**
+ * @brief Lock LVGL for thread-safe access
+ * 
+ * Must be called before any LVGL API calls from non-LVGL tasks
+ * 
+ * @param timeout_ms Timeout in milliseconds
+ * @return true if lock acquired, false on timeout
+ */
+bool display_lvgl_lock(int timeout_ms);
+
+/**
+ * @brief Unlock LVGL after thread-safe access
+ */
+void display_lvgl_unlock(void);
+
 #ifdef __cplusplus
 }
 #endif

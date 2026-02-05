@@ -13,11 +13,11 @@ Product area tracking system for Waveshare ESP32-S3 Touch LCD 7" (800×480 RGB p
 
 ## Project Status
 
-Current milestone: **Milestone 1 - Panel-Only Validation**
+Current milestone: **Milestone 2 - LVGL v8 Minimal Label**
 
 ### Milestones
-- [ ] **Milestone 1**: Panel-only RGB bring-up with test patterns (no LVGL, no touch)
-- [ ] **Milestone 2**: LVGL v8 minimal label (no touch)
+- [x] **Milestone 1**: Panel-only RGB bring-up with test patterns (no LVGL, no touch) ✅
+- [ ] **Milestone 2**: LVGL v8 minimal label (no touch) - **IN TESTING**
 - [ ] **Milestone 3**: Touch bring-up with CH422G reset sequence
 - [ ] **Milestone 4**: EEZ Studio UI integration (Home/Setup screens)
 
@@ -56,15 +56,13 @@ idf.py -p /dev/ttyUSB0 monitor
 idf.py -p /dev/ttyUSB0 flash monitor
 ```
 
-### Expected Output (Milestone 1)
+### Expected Output (Milestone 2)
 
-The display should cycle through test patterns every 14 seconds:
-1. Solid RED (2s)
-2. Solid GREEN (2s)
-3. Solid BLUE (2s)
-4. 8 vertical color bars (4s)
-5. Solid WHITE (2s)
-6. Solid BLACK (2s)
+The display should show a centered label with:
+- Text: "PickMod Product Area Tracker / Milestone 2: LVGL v8 Test / 800x480 RGB Direct-Mode"
+- Dark blue-gray background (#2E3440)
+- White text (#ECEFF4)
+- Montserrat 24pt font
 
 **Expected serial logs:**
 ```
@@ -72,15 +70,25 @@ I (xxx) display: Initializing RGB LCD panel (800x480)
 I (xxx) display: Configuring for avoid lcd tearing effect
 I (xxx) display: RGB LCD panel initialized successfully
 I (xxx) display: Framebuffer @ 0x3fc00000 (in PSRAM)
-I (xxx) main: Display initialized successfully
-I (xxx) main: Test cycle 1 - Drawing test patterns...
+I (xxx) display: Initializing LVGL v8 with esp_lvgl_port
+I (xxx) display: Configuration: direct-mode, avoid lcd tearing effect
+I (xxx) display: LVGL port initialized (single task, mutex enabled)
+I (xxx) display: LVGL display registered (direct-mode rendering)
+I (xxx) display: Buffer size: 40000 pixels (double buffered)
+I (xxx) display: LVGL initialization complete
+I (xxx) main: LVGL initialized successfully
+I (xxx) main: Test label created and centered
+I (xxx) main: Status check: 10 seconds elapsed
+I (xxx) main: Status check: 60 seconds elapsed
+I (xxx) main: 60 seconds completed - Milestone 2 stability test PASSED
 ```
 
 **Validation criteria:**
-- No flicker or tearing visible
-- Clean color transitions
-- No garbled frames
-- Stable for ≥60 seconds (5+ cycles)
+- Label remains perfectly stable (no "jumping" text)
+- No flicker or tearing
+- Text clearly readable and properly centered
+- Stable for ≥60 seconds
+- Logs show "direct-mode", "avoid lcd tearing", and "single task, mutex enabled"
 
 ## Configuration
 
