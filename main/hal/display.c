@@ -240,7 +240,7 @@ esp_err_t display_lvgl_init(void)
 
     /* Add RGB display to LVGL */
     const lvgl_port_display_cfg_t disp_cfg = {
-        .io_handle = panel_handle,
+        .io_handle = NULL,  // RGB panels don't use an I/O handle
         .panel_handle = panel_handle,
         .buffer_size = DISPLAY_WIDTH * 50,  // 50 lines buffer
         .double_buffer = true,              // Enable double buffering
