@@ -197,6 +197,40 @@ idf.py -p /dev/ttyUSB0 flash monitor
 - Verify esp_lvgl_port component version (should be 2.x)
 - Ensure PSRAM is enabled in sdkconfig
 
+**Memory Allocation Failures (ESP_ERR_NO_MEM):**
+If you see errors like:
+```
+E (xxx) lcd_panel.rgb: no mem for frame buffer
+E (xxx) display: Failed to create RGB panel: ESP_ERR_NO_MEM
+```
+And flash size warnings like:
+```
+W (xxx) spi_flash: Detected size(16384k) larger than size in binary image header(2048k)
+```
+
+**Root Cause:** Stale or manually-edited `sdkconfig` file missing PSRAM/flash configurations.
+
+**Solution:**
+```bash
+# Delete the stale configuration
+rm -f sdkconfig sdkconfig.old
+
+# Regenerate from sdkconfig.defaults
+idf.py set-target esp32s3
+
+# Build with correct configuration
+idf.py build
+
+# Flash to device
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+**Prevention:** 
+- Never manually edit the `sdkconfig` file
+- Make permanent changes in `sdkconfig.defaults`
+- Use `idf.py menuconfig` for temporary/local testing changes
+- Always delete `sdkconfig` after modifying `sdkconfig.defaults`
+
 ---
 
 ## Compliance with .copilot-instructions.md
