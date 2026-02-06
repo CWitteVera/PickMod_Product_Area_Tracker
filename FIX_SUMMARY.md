@@ -75,7 +75,7 @@ idf.py -p /dev/ttyUSB0 flash monitor
 
 The `sdkconfig.defaults` file contains all the required configurations:
 
-### Flash Configuration (Lines 11-15)
+### Flash Configuration (sdkconfig.defaults lines 13-15)
 ```
 CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
@@ -83,7 +83,7 @@ CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 ```
 ✅ Configures 16MB flash, matching the actual hardware
 
-### PSRAM Configuration (Lines 39-44)
+### PSRAM Configuration (sdkconfig.defaults lines 39-44)
 ```
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
@@ -96,7 +96,7 @@ CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=16384
 ✅ Initializes PSRAM on boot
 ✅ Allows malloc to use PSRAM for large allocations
 
-### Font Configuration (Line 87)
+### Font Configuration (sdkconfig.defaults line 87)
 ```
 CONFIG_LV_FONT_MONTSERRAT_24=y
 ```
