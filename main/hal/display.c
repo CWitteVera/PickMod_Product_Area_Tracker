@@ -43,6 +43,14 @@ static uint16_t *framebuffer = NULL;
 /** LVGL display object */
 static lv_disp_t *lvgl_disp = NULL;
 
+/** LVGL draw buffers (allocated in PSRAM) */
+static lv_color_t *lvgl_buf1 = NULL;
+static lv_color_t *lvgl_buf2 = NULL;
+
+/** LVGL display driver structures */
+static lv_disp_draw_buf_t lvgl_draw_buf;
+static lv_disp_drv_t lvgl_disp_drv;
+
 /* Pin definitions for Waveshare ESP32-S3 Touch LCD 7" */
 #define PIN_LCD_PCLK        (8)
 #define PIN_LCD_HSYNC       (46)
@@ -237,6 +245,12 @@ esp_err_t display_lvgl_init(void)
         return ESP_ERR_INVALID_STATE;
     }
 
+    /* Prevent double initialization */
+    if (lvgl_disp != NULL) {
+        ESP_LOGW(TAG, "LVGL already initialized, skipping");
+        return ESP_OK;
+    }
+
     ESP_LOGI(TAG, "Initializing LVGL v8 with esp_lvgl_port");
     ESP_LOGI(TAG, "Configuration: direct-mode, avoid lcd tearing effect");
 
@@ -260,37 +274,39 @@ esp_err_t display_lvgl_init(void)
     /* Configure LVGL display manually for RGB panels to avoid io_handle NULL issue */
     /* Allocate draw buffers in PSRAM */
     size_t buffer_size = DISPLAY_WIDTH * 50;  // 50 lines
-    lv_color_t *buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
-    lv_color_t *buf2 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+    lvgl_buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+    lvgl_buf2 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
     
-    if (buf1 == NULL || buf2 == NULL) {
+    if (lvgl_buf1 == NULL || lvgl_buf2 == NULL) {
         ESP_LOGE(TAG, "Failed to allocate LVGL draw buffers");
-        if (buf1) free(buf1);
-        if (buf2) free(buf2);
+        if (lvgl_buf1) heap_caps_free(lvgl_buf1);
+        if (lvgl_buf2) heap_caps_free(lvgl_buf2);
+        lvgl_buf1 = NULL;
+        lvgl_buf2 = NULL;
         return ESP_ERR_NO_MEM;
     }
     
     ESP_LOGI(TAG, "Allocated draw buffers: %d pixels x 2 (in PSRAM)", buffer_size);
     
     /* Initialize LVGL draw buffer */
-    static lv_disp_draw_buf_t draw_buf;
-    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, buffer_size);
+    lv_disp_draw_buf_init(&lvgl_draw_buf, lvgl_buf1, lvgl_buf2, buffer_size);
     
     /* Initialize display driver */
-    static lv_disp_drv_t disp_drv;
-    lv_disp_drv_init(&disp_drv);
-    disp_drv.hor_res = DISPLAY_WIDTH;
-    disp_drv.ver_res = DISPLAY_HEIGHT;
-    disp_drv.flush_cb = rgb_lvgl_flush_cb;
-    disp_drv.draw_buf = &draw_buf;
-    disp_drv.user_data = panel_handle;
+    lv_disp_drv_init(&lvgl_disp_drv);
+    lvgl_disp_drv.hor_res = DISPLAY_WIDTH;
+    lvgl_disp_drv.ver_res = DISPLAY_HEIGHT;
+    lvgl_disp_drv.flush_cb = rgb_lvgl_flush_cb;
+    lvgl_disp_drv.draw_buf = &lvgl_draw_buf;
+    lvgl_disp_drv.user_data = panel_handle;
     
     /* Register the display */
-    lvgl_disp = lv_disp_drv_register(&disp_drv);
+    lvgl_disp = lv_disp_drv_register(&lvgl_disp_drv);
     if (lvgl_disp == NULL) {
         ESP_LOGE(TAG, "Failed to register LVGL display");
-        free(buf1);
-        free(buf2);
+        heap_caps_free(lvgl_buf1);
+        heap_caps_free(lvgl_buf2);
+        lvgl_buf1 = NULL;
+        lvgl_buf2 = NULL;
         return ESP_FAIL;
     }
 
