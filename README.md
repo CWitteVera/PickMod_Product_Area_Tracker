@@ -2,6 +2,16 @@
 
 Product area tracking system for Waveshare ESP32-S3 Touch LCD 7" (800×480 RGB panel).
 
+## 🔧 Quick Fixes
+
+**Just got a build error after changing menuconfig?** → See [BUILD_ERROR_FIX_SUMMARY.md](BUILD_ERROR_FIX_SUMMARY.md)
+
+**Common Issues:**
+- Build error: `invalid use of incomplete typedef 'lv_event_t'` → [Component version fix](BUILD_ERROR_FIX_SUMMARY.md)
+- Font error: `'lv_font_montserrat_24' undeclared` → [Font configuration](#font-configuration-issues)
+- Watchdog timeout: LVGL task frozen → [Watchdog fix](WATCHDOG_FIX.md)
+- Memory error: `ESP_ERR_NO_MEM` → [Memory allocation](#memory-allocation-failure-esp_err_no_mem)
+
 ## Hardware
 
 - **Board**: Waveshare ESP32-S3 Touch LCD 7"
@@ -217,6 +227,41 @@ idf.py -p /dev/ttyUSB0 flash monitor
 For detailed technical information about this fix, see [WATCHDOG_FIX.md](WATCHDOG_FIX.md).
 
 **Memory Consumption Note:** LVGL demos are explicitly disabled. The ~900KB memory usage is normal for an 800×480 RGB565 display with double-buffered rendering.
+
+#### Component Version Conflict (LVGL v8/v9 Incompatibility)
+
+If you encounter a build error after changing menuconfig settings (e.g., unchecking LVGL demos):
+
+```
+error: invalid use of incomplete typedef 'lv_event_t' {aka 'struct _lv_event_t'}
+  347 |     lvgl_port_display_ctx_t *disp_ctx = (lvgl_port_display_ctx_t *)e->user_data;
+      |                                                                     ^~
+```
+
+**Root Cause:** The ESP-IDF component manager resolved to a version of `esp_lvgl_port` that includes LVGL v9 code paths, but the code has an API incompatibility with LVGL v9.
+
+**Solution:** This has been fixed by pinning exact component versions. To apply:
+
+```bash
+# Pull latest changes
+git pull
+
+# Clean managed components and build cache
+rm -rf managed_components/
+rm -rf build/
+
+# Reconfigure (downloads components with new version constraints)
+idf.py set-target esp32s3
+
+# Build
+idf.py build
+```
+
+The fix ensures:
+- `lvgl/lvgl` is pinned to v8.4.x (explicitly prevents v9)
+- `esp_lvgl_port` is pinned to exactly v2.1.0 (prevents version drift)
+
+For detailed technical information, see [COMPONENT_VERSION_FIX.md](COMPONENT_VERSION_FIX.md).
 
 ## Project Structure
 
