@@ -2,6 +2,16 @@
 
 Product area tracking system for Waveshare ESP32-S3 Touch LCD 7" (800×480 RGB panel).
 
+## 🔧 Quick Fixes
+
+**Just got a build error after changing menuconfig?** → See [BUILD_ERROR_FIX_SUMMARY.md](BUILD_ERROR_FIX_SUMMARY.md)
+
+**Common Issues:**
+- Build error: `invalid use of incomplete typedef 'lv_event_t'` → [Component version fix](BUILD_ERROR_FIX_SUMMARY.md)
+- Font error: `'lv_font_montserrat_24' undeclared` → [Font configuration](#font-configuration-issues)
+- Watchdog timeout: LVGL task frozen → [Watchdog fix](WATCHDOG_FIX.md)
+- Memory error: `ESP_ERR_NO_MEM` → [Memory allocation](#memory-allocation-failure-esp_err_no_mem)
+
 ## Hardware
 
 - **Board**: Waveshare ESP32-S3 Touch LCD 7"
