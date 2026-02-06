@@ -2,7 +2,10 @@
 ## Dependencies for main component
 
 dependencies:
-  espressif/esp_lvgl_port: "~2.1.0"
-  # Pin to esp_lvgl_port 2.1.x which provides LVGL v8.x support
+  lvgl/lvgl: "~8.4.0"
+  # Explicitly require LVGL v8.4.x to prevent LVGL v9.x from being used
+  espressif/esp_lvgl_port: "==2.1.0"
+  # Pin to exact esp_lvgl_port 2.1.0 which provides stable LVGL v8.x support
+  # Version 2.1.1+ may have LVGL v9 code paths with API issues
   # Version 2.3+ uses LVGL v9.x which has incompatible API changes
   # This matches the requirement for LVGL v8 parity with EEZ export and the original Espressif demo
