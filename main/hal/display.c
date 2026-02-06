@@ -27,6 +27,7 @@
 #include "esp_lcd_panel_rgb.h"
 #include "esp_lcd_panel_ops.h"
 #include "driver/gpio.h"
+#include "driver/i2c.h"
 #include "esp_lvgl_port.h"
 #include "esp_heap_caps.h"
 #include "lvgl.h"
@@ -86,9 +87,119 @@ static lv_disp_drv_t lvgl_disp_drv;
 #define LCD_VSYNC_FRONT_PORCH   (13)
 #define LCD_VSYNC_PULSE_WIDTH   (3)
 
+/* I2C configuration for CH422G I/O expander */
+#define I2C_MASTER_NUM          I2C_NUM_0
+#define I2C_MASTER_SDA_IO       17
+#define I2C_MASTER_SCL_IO       18
+#define I2C_MASTER_FREQ_HZ      100000
+#define I2C_MASTER_TIMEOUT_MS   1000
+
+/* CH422G I/O expander */
+#define CH422G_I2C_ADDR         0x24
+#define CH422G_REG_OUT          0x02  // Output register
+
+/* CH422G EXIO bit mapping for Waveshare ESP32-S3 Touch LCD 7" */
+#define CH422G_EXIO1_BIT        (1 << 0)  // TP_RST (touch reset)
+#define CH422G_EXIO2_BIT        (1 << 1)  // DISP (backlight)
+#define CH422G_EXIO3_BIT        (1 << 2)  // LCD_RST (LCD reset)
+
+/**
+ * @brief Initialize I2C master for CH422G communication
+ */
+static esp_err_t i2c_master_init(void)
+{
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+    };
+
+    esp_err_t ret = i2c_param_config(I2C_MASTER_NUM, &conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C param config failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ret = i2c_driver_install(I2C_MASTER_NUM, conf.mode, 0, 0, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C driver install failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "I2C master initialized (SDA=%d, SCL=%d)", I2C_MASTER_SDA_IO, I2C_MASTER_SCL_IO);
+    return ESP_OK;
+}
+
+/**
+ * @brief Write to CH422G output register
+ * 
+ * @param value Output value (bit 0=EXIO1, bit 1=EXIO2, bit 2=EXIO3)
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t ch422g_write_output(uint8_t value)
+{
+    uint8_t write_buf[2] = {CH422G_REG_OUT, value};
+    
+    esp_err_t ret = i2c_master_write_to_device(
+        I2C_MASTER_NUM,
+        CH422G_I2C_ADDR,
+        write_buf,
+        sizeof(write_buf),
+        pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS)
+    );
+    
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "CH422G write failed: %s", esp_err_to_name(ret));
+    }
+    
+    return ret;
+}
+
+/**
+ * @brief Initialize backlight via CH422G EXIO2
+ * 
+ * Turns on the display backlight by setting EXIO2 high on the CH422G
+ * I/O expander. Must be called after I2C master initialization.
+ * 
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t backlight_init(void)
+{
+    ESP_LOGI(TAG, "Initializing backlight via CH422G EXIO2");
+    
+    /* Set EXIO2 (backlight) high, keep EXIO1 and EXIO3 high for stability */
+    uint8_t output_value = CH422G_EXIO1_BIT | CH422G_EXIO2_BIT | CH422G_EXIO3_BIT;
+    
+    esp_err_t ret = ch422g_write_output(output_value);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Backlight enabled (EXIO2=1)");
+    } else {
+        ESP_LOGE(TAG, "Failed to enable backlight");
+    }
+    
+    return ret;
+}
+
 esp_err_t display_init(void)
 {
     esp_err_t ret = ESP_OK;
+
+    /* Initialize I2C master for CH422G */
+    ret = i2c_master_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize I2C master: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    /* Initialize backlight via CH422G EXIO2 */
+    ret = backlight_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to initialize backlight, display may be dark");
+        /* Continue anyway - panel may still work */
+    }
 
     ESP_LOGI(TAG, "Initializing RGB LCD panel (800x480)");
     ESP_LOGI(TAG, "Configuring for avoid lcd tearing effect");
