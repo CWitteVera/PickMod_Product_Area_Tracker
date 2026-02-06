@@ -170,7 +170,8 @@ static esp_err_t backlight_init(void)
 {
     ESP_LOGI(TAG, "Initializing backlight via CH422G EXIO2");
     
-    /* Set EXIO2 (backlight) high, keep EXIO1 and EXIO3 high for stability */
+    /* Set EXIO2 (backlight) high, keep EXIO1 (TP_RST) and EXIO3 (LCD_RST) high
+     * to avoid holding touch controller or LCD in reset state */
     uint8_t output_value = CH422G_EXIO1_BIT | CH422G_EXIO2_BIT | CH422G_EXIO3_BIT;
     
     esp_err_t ret = ch422g_write_output(output_value);
@@ -197,8 +198,8 @@ esp_err_t display_init(void)
     /* Initialize backlight via CH422G EXIO2 */
     ret = backlight_init();
     if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to initialize backlight, display may be dark");
-        /* Continue anyway - panel may still work */
+        ESP_LOGW(TAG, "Failed to initialize backlight, display will be invisible");
+        /* Continue anyway - RGB panel will function but backlight will be off */
     }
 
     ESP_LOGI(TAG, "Initializing RGB LCD panel (800x480)");
