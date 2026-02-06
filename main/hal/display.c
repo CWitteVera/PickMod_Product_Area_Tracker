@@ -28,6 +28,8 @@
 #include "esp_lcd_panel_ops.h"
 #include "driver/gpio.h"
 #include "esp_lvgl_port.h"
+#include "esp_heap_caps.h"
+#include "lvgl.h"
 #include <string.h>
 
 static const char *TAG = "display";
@@ -209,6 +211,23 @@ esp_lcd_panel_handle_t display_get_panel_handle(void)
     return panel_handle;
 }
 
+/* Custom flush callback for RGB panel direct-mode rendering */
+static void rgb_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+{
+    esp_lcd_panel_handle_t panel = (esp_lcd_panel_handle_t)drv->user_data;
+    
+    /* Draw the bitmap to RGB framebuffer */
+    int x1 = area->x1;
+    int y1 = area->y1;
+    int x2 = area->x2;
+    int y2 = area->y2;
+    
+    esp_lcd_panel_draw_bitmap(panel, x1, y1, x2 + 1, y2 + 1, color_map);
+    
+    /* Notify LVGL that flushing is done */
+    lv_disp_flush_ready(drv);
+}
+
 esp_err_t display_lvgl_init(void)
 {
     esp_err_t ret = ESP_OK;
@@ -238,34 +257,45 @@ esp_err_t display_lvgl_init(void)
 
     ESP_LOGI(TAG, "LVGL port initialized (single task, mutex enabled)");
 
-    /* Add RGB display to LVGL */
-    const lvgl_port_display_cfg_t disp_cfg = {
-        .io_handle = NULL,  // RGB panels don't use an I/O handle
-        .panel_handle = panel_handle,
-        .buffer_size = DISPLAY_WIDTH * 50,  // 50 lines buffer
-        .double_buffer = true,              // Enable double buffering
-        .hres = DISPLAY_WIDTH,
-        .vres = DISPLAY_HEIGHT,
-        .monochrome = false,
-        .rotation = {
-            .swap_xy = false,
-            .mirror_x = false,
-            .mirror_y = false,
-        },
-        .flags = {
-            .buff_dma = true,
-            .buff_spiram = true,
-        }
-    };
-
-    lvgl_disp = lvgl_port_add_disp(&disp_cfg);
+    /* Configure LVGL display manually for RGB panels to avoid io_handle NULL issue */
+    /* Allocate draw buffers in PSRAM */
+    size_t buffer_size = DISPLAY_WIDTH * 50;  // 50 lines
+    lv_color_t *buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+    lv_color_t *buf2 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
+    
+    if (buf1 == NULL || buf2 == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate LVGL draw buffers");
+        if (buf1) free(buf1);
+        if (buf2) free(buf2);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    ESP_LOGI(TAG, "Allocated draw buffers: %d pixels x 2 (in PSRAM)", buffer_size);
+    
+    /* Initialize LVGL draw buffer */
+    static lv_disp_draw_buf_t draw_buf;
+    lv_disp_draw_buf_init(&draw_buf, buf1, buf2, buffer_size);
+    
+    /* Initialize display driver */
+    static lv_disp_drv_t disp_drv;
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.hor_res = DISPLAY_WIDTH;
+    disp_drv.ver_res = DISPLAY_HEIGHT;
+    disp_drv.flush_cb = rgb_lvgl_flush_cb;
+    disp_drv.draw_buf = &draw_buf;
+    disp_drv.user_data = panel_handle;
+    
+    /* Register the display */
+    lvgl_disp = lv_disp_drv_register(&disp_drv);
     if (lvgl_disp == NULL) {
-        ESP_LOGE(TAG, "Failed to add display to LVGL");
+        ESP_LOGE(TAG, "Failed to register LVGL display");
+        free(buf1);
+        free(buf2);
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "LVGL display registered (direct-mode rendering)");
-    ESP_LOGI(TAG, "Buffer size: %d pixels (double buffered)", disp_cfg.buffer_size);
+    ESP_LOGI(TAG, "LVGL display registered (direct-mode with custom flush)");
+    ESP_LOGI(TAG, "Buffer size: %d pixels (double buffered)", buffer_size);
     ESP_LOGI(TAG, "LVGL initialization complete");
 
     return ESP_OK;
