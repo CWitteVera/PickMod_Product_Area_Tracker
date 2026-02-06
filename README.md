@@ -98,6 +98,31 @@ Key settings in `sdkconfig.defaults`:
 - Compiler optimization: Performance mode
 - LCD RGB ISR: IRAM-safe
 - LCD timing: Based on Espressif EV-Board LVGL demo
+- LVGL Fonts: Montserrat 14 and 24 enabled
+
+### Troubleshooting: Font Configuration
+
+If you encounter the error `'lv_font_montserrat_24' undeclared`, the LVGL font configuration needs to be regenerated. This happens when the `sdkconfig` file doesn't match `sdkconfig.defaults`.
+
+**Solution:**
+
+```bash
+# Option 1: Delete sdkconfig and reconfigure (recommended)
+rm -f sdkconfig sdkconfig.old
+idf.py set-target esp32s3
+idf.py build
+
+# Option 2: Force reconfiguration
+idf.py reconfigure
+idf.py build
+
+# Option 3: Full clean build
+idf.py fullclean
+idf.py set-target esp32s3
+idf.py build
+```
+
+The `sdkconfig.defaults` file now explicitly lists all Montserrat font sizes, enabling sizes 14 and 24 while disabling others. This ensures the LVGL library is compiled with the required fonts.
 
 ## Project Structure
 
