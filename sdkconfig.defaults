@@ -75,4 +75,6 @@ CONFIG_ESP_SYSTEM_PANIC_PRINT_HALT=y
 #
 # LVGL Configuration
 #
+# Enable Montserrat fonts (both default and custom sizes)
+CONFIG_LV_FONT_MONTSERRAT_14=y
 CONFIG_LV_FONT_MONTSERRAT_24=y
