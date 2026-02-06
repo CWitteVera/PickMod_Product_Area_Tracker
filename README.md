@@ -37,6 +37,26 @@ Current milestone: **Milestone 2 - LVGL v8 Minimal Label**
    # Or wherever you installed ESP-IDF
    ```
 
+### Verify Configuration (Optional but Recommended)
+
+Before building, you can run the configuration checker to verify your setup:
+
+```bash
+# Make the script executable (first time only)
+chmod +x check_config.sh
+
+# Run the configuration checker
+./check_config.sh
+```
+
+This will verify:
+- sdkconfig.defaults is present and has required settings
+- PSRAM configuration is correct
+- Flash size is configured properly
+- Montserrat 24 font is enabled
+- No stale sdkconfig files are present
+- ESP-IDF environment is activated
+
 ### Build and Flash
 
 ```bash
