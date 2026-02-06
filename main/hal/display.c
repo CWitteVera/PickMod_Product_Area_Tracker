@@ -283,6 +283,8 @@ esp_err_t display_lvgl_init(void)
         if (lvgl_buf2) heap_caps_free(lvgl_buf2);
         lvgl_buf1 = NULL;
         lvgl_buf2 = NULL;
+        /* Note: lvgl_port remains initialized. In production, this is acceptable
+         * as the application will not continue after display init failure. */
         return ESP_ERR_NO_MEM;
     }
     
@@ -307,6 +309,8 @@ esp_err_t display_lvgl_init(void)
         heap_caps_free(lvgl_buf2);
         lvgl_buf1 = NULL;
         lvgl_buf2 = NULL;
+        /* Note: lvgl_port remains initialized. In production, this is acceptable
+         * as the application will not continue after display init failure. */
         return ESP_FAIL;
     }
 
