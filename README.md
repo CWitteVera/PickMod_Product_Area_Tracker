@@ -180,6 +180,44 @@ idf.py build
 - Use `idf.py menuconfig` (for temporary local changes)
 - Always delete `sdkconfig` after changing `sdkconfig.defaults` to force regeneration
 
+#### Watchdog Timeout and Blank Screen
+
+If you encounter:
+```
+E (xxx) lcd_panel.io: esp_lcd_panel_io_register_event_callbacks(40): invalid panel io handle
+E (xxxx) task_wdt: Task watchdog got triggered. The following tasks/users did not reset the watchdog in time:
+E (xxxx) task_wdt:  - IDLE0 (CPU 0)
+E (xxxx) task_wdt: Tasks currently running:
+E (xxxx) task_wdt: CPU 0: taskLVGL
+```
+
+With a blank screen and the LVGL task stuck in `wait_for_flushing`.
+
+**Root Cause:** The `esp_lvgl_port` library tries to register event callbacks on a NULL `io_handle` for RGB panels, which causes the LVGL flush operation to never complete.
+
+**Solution:** This has been fixed in the latest code. The fix:
+1. Uses manual LVGL display driver registration instead of `lvgl_port_add_disp()`
+2. Provides a custom flush callback that works with RGB panels
+3. Properly signals LVGL when flush operations complete
+
+To apply the fix:
+```bash
+# Pull latest changes
+git pull
+
+# Clean build
+rm -f sdkconfig sdkconfig.old
+idf.py set-target esp32s3
+idf.py build
+
+# Flash
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+For detailed technical information about this fix, see [WATCHDOG_FIX.md](WATCHDOG_FIX.md).
+
+**Memory Consumption Note:** LVGL demos are explicitly disabled. The ~900KB memory usage is normal for an 800×480 RGB565 display with double-buffered rendering.
+
 ## Project Structure
 
 ```
