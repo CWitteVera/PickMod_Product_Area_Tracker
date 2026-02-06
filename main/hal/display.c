@@ -8,7 +8,7 @@
  * - Timing: Cloned from Espressif ESP32-S3 LCD EV-Board LVGL demo
  * 
  * LVGL Integration:
- * - esp_lvgl_port for LVGL v8
+ * - esp_lvgl_port for LVGL v9
  * - Direct-mode rendering (no bounce buffer)
  * - Anti-tearing enabled via CONFIG_LCD_RGB_RESTART_IN_VSYNC
  * - Single LVGL task with mutex discipline
@@ -47,9 +47,8 @@ static lv_disp_t *lvgl_disp = NULL;
 static lv_color_t *lvgl_buf1 = NULL;
 static lv_color_t *lvgl_buf2 = NULL;
 
-/** LVGL display driver structures */
-static lv_disp_draw_buf_t lvgl_draw_buf;
-static lv_disp_drv_t lvgl_disp_drv;
+/** LVGL display driver structures - removed in LVGL v9 */
+/* lv_disp_draw_buf_t and lv_disp_drv_t are replaced by lv_display_t */
 
 /* Pin definitions for Waveshare ESP32-S3 Touch LCD 7" */
 #define PIN_LCD_PCLK        (8)
@@ -219,10 +218,10 @@ esp_lcd_panel_handle_t display_get_panel_handle(void)
     return panel_handle;
 }
 
-/* Custom flush callback for RGB panel direct-mode rendering */
-static void rgb_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
+/* Custom flush callback for RGB panel direct-mode rendering - LVGL v9 API */
+static void rgb_lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    esp_lcd_panel_handle_t panel = (esp_lcd_panel_handle_t)drv->user_data;
+    esp_lcd_panel_handle_t panel = (esp_lcd_panel_handle_t)lv_display_get_user_data(disp);
     
     /* Draw the bitmap to RGB framebuffer */
     int x1 = area->x1;
@@ -230,10 +229,10 @@ static void rgb_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_colo
     int x2 = area->x2;
     int y2 = area->y2;
     
-    esp_lcd_panel_draw_bitmap(panel, x1, y1, x2 + 1, y2 + 1, color_map);
+    esp_lcd_panel_draw_bitmap(panel, x1, y1, x2 + 1, y2 + 1, px_map);
     
     /* Notify LVGL that flushing is done */
-    lv_disp_flush_ready(drv);
+    lv_display_flush_ready(disp);
 }
 
 esp_err_t display_lvgl_init(void)
@@ -251,7 +250,7 @@ esp_err_t display_lvgl_init(void)
         return ESP_OK;
     }
 
-    ESP_LOGI(TAG, "Initializing LVGL v8 with esp_lvgl_port");
+    ESP_LOGI(TAG, "Initializing LVGL v9 with esp_lvgl_port");
     ESP_LOGI(TAG, "Configuration: direct-mode, avoid lcd tearing effect");
 
     /* Initialize LVGL core */
@@ -271,7 +270,7 @@ esp_err_t display_lvgl_init(void)
 
     ESP_LOGI(TAG, "LVGL port initialized (single task, mutex enabled)");
 
-    /* Configure LVGL display manually for RGB panels to avoid io_handle NULL issue */
+    /* Configure LVGL display manually for RGB panels using LVGL v9 API */
     /* Allocate draw buffers in PSRAM */
     size_t buffer_size = DISPLAY_WIDTH * 50;  // 50 lines
     lvgl_buf1 = heap_caps_malloc(buffer_size * sizeof(lv_color_t), MALLOC_CAP_SPIRAM);
@@ -290,29 +289,21 @@ esp_err_t display_lvgl_init(void)
     
     ESP_LOGI(TAG, "Allocated draw buffers: %d pixels x 2 (in PSRAM)", buffer_size);
     
-    /* Initialize LVGL draw buffer */
-    lv_disp_draw_buf_init(&lvgl_draw_buf, lvgl_buf1, lvgl_buf2, buffer_size);
-    
-    /* Initialize display driver */
-    lv_disp_drv_init(&lvgl_disp_drv);
-    lvgl_disp_drv.hor_res = DISPLAY_WIDTH;
-    lvgl_disp_drv.ver_res = DISPLAY_HEIGHT;
-    lvgl_disp_drv.flush_cb = rgb_lvgl_flush_cb;
-    lvgl_disp_drv.draw_buf = &lvgl_draw_buf;
-    lvgl_disp_drv.user_data = panel_handle;
-    
-    /* Register the display */
-    lvgl_disp = lv_disp_drv_register(&lvgl_disp_drv);
+    /* Create display using LVGL v9 API */
+    lvgl_disp = lv_display_create(DISPLAY_WIDTH, DISPLAY_HEIGHT);
     if (lvgl_disp == NULL) {
-        ESP_LOGE(TAG, "Failed to register LVGL display");
+        ESP_LOGE(TAG, "Failed to create LVGL display");
         heap_caps_free(lvgl_buf1);
         heap_caps_free(lvgl_buf2);
         lvgl_buf1 = NULL;
         lvgl_buf2 = NULL;
-        /* Note: lvgl_port remains initialized. In production, this is acceptable
-         * as the application will not continue after display init failure. */
         return ESP_FAIL;
     }
+    
+    /* Set up display buffers and callbacks */
+    lv_display_set_flush_cb(lvgl_disp, rgb_lvgl_flush_cb);
+    lv_display_set_buffers(lvgl_disp, lvgl_buf1, lvgl_buf2, buffer_size * sizeof(lv_color_t), LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_user_data(lvgl_disp, panel_handle);
 
     ESP_LOGI(TAG, "LVGL display registered (direct-mode with custom flush)");
     ESP_LOGI(TAG, "Buffer size: %d pixels (double buffered)", buffer_size);

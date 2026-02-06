@@ -2,9 +2,9 @@
  * @file app_main.c
  * @brief Main application entry point for PickMod Product Area Tracker
  * 
- * Milestone 2: LVGL v8 Minimal Label
+ * Milestone 2: LVGL Minimal Label
  * - Initialize RGB LCD panel (800x480)
- * - Initialize LVGL v8 with esp_lvgl_port (direct-mode)
+ * - Initialize LVGL with esp_lvgl_port (direct-mode)
  * - Display centered label
  * - Run for 60+ seconds to validate stability
  */
@@ -37,7 +37,7 @@ static void create_test_label(void)
     /* Create centered label */
     lv_obj_t *label = lv_label_create(scr);
     lv_label_set_text(label, "PickMod Product Area Tracker\n"
-                             "Milestone 2: LVGL v8 Test\n"
+                             "Milestone 2: LVGL Test\n"
                              "800x480 RGB Direct-Mode");
     
     /* Center the label */
@@ -58,11 +58,11 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "=================================================");
     ESP_LOGI(TAG, "PickMod Product Area Tracker");
-    ESP_LOGI(TAG, "Milestone 2: LVGL v8 Minimal Label");
+    ESP_LOGI(TAG, "Milestone 2: LVGL Minimal Label");
     ESP_LOGI(TAG, "=================================================");
     ESP_LOGI(TAG, "Board: Waveshare ESP32-S3 Touch LCD 7\"");
     ESP_LOGI(TAG, "Display: 800x480 RGB panel");
-    ESP_LOGI(TAG, "Graphics: LVGL v8 (esp_lvgl_port)");
+    ESP_LOGI(TAG, "Graphics: LVGL (esp_lvgl_port)");
     ESP_LOGI(TAG, "ESP-IDF: %s", esp_get_idf_version());
     ESP_LOGI(TAG, "=================================================");
 
