@@ -37,6 +37,26 @@ Current milestone: **Milestone 2 - LVGL v8 Minimal Label**
    # Or wherever you installed ESP-IDF
    ```
 
+### Verify Configuration (Optional but Recommended)
+
+Before building, you can run the configuration checker to verify your setup:
+
+```bash
+# Make the script executable (first time only)
+chmod +x check_config.sh
+
+# Run the configuration checker
+./check_config.sh
+```
+
+This will verify:
+- sdkconfig.defaults is present and has required settings
+- PSRAM configuration is correct
+- Flash size is configured properly
+- Montserrat 24 font is enabled
+- No stale sdkconfig files are present
+- ESP-IDF environment is activated
+
 ### Build and Flash
 
 ```bash
@@ -100,7 +120,9 @@ Key settings in `sdkconfig.defaults`:
 - LCD timing: Based on Espressif EV-Board LVGL demo
 - LVGL Fonts: Montserrat 14 and 24 enabled
 
-### Troubleshooting: Font Configuration
+### Troubleshooting
+
+#### Font Configuration Issues
 
 If you encounter the error `'lv_font_montserrat_24' undeclared`, the LVGL font configuration needs to be regenerated. This happens when the `sdkconfig` file doesn't match `sdkconfig.defaults`.
 
@@ -123,6 +145,40 @@ idf.py build
 ```
 
 The `sdkconfig.defaults` file now explicitly lists all Montserrat font sizes, enabling sizes 14 and 24 while disabling others. This ensures the LVGL library is compiled with the required fonts.
+
+#### Memory Allocation Failure (ESP_ERR_NO_MEM)
+
+If you encounter errors like:
+```
+E (xxx) lcd_panel.rgb: lcd_rgb_panel_alloc_frame_buffers(xxx): no mem for frame buffer
+E (xxx) lcd_panel.rgb: esp_lcd_new_rgb_panel(xxx): alloc frame buffers failed
+E (xxx) display: Failed to create RGB panel: ESP_ERR_NO_MEM
+```
+
+And you also see a flash size mismatch warning:
+```
+W (xxx) spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k)
+```
+
+**Root Cause:** You have a stale or manually-edited `sdkconfig` file that is missing critical PSRAM and flash configurations from `sdkconfig.defaults`.
+
+**Solution:**
+
+```bash
+# Delete the stale sdkconfig file
+rm -f sdkconfig sdkconfig.old
+
+# Regenerate from sdkconfig.defaults
+idf.py set-target esp32s3
+
+# Build with correct configuration
+idf.py build
+```
+
+**Important:** Never manually edit the `sdkconfig` file directly. Instead:
+- Make changes in `sdkconfig.defaults` (for permanent project defaults)
+- Use `idf.py menuconfig` (for temporary local changes)
+- Always delete `sdkconfig` after changing `sdkconfig.defaults` to force regeneration
 
 ## Project Structure
 

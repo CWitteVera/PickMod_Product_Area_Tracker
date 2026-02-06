@@ -107,6 +107,30 @@ idf.py set-target esp32s3
 idf.py build
 ```
 
+### Memory allocation failure (ESP_ERR_NO_MEM)
+
+**Symptoms:**
+- Error: `lcd_rgb_panel_alloc_frame_buffers: no mem for frame buffer`
+- Error: `Failed to create RGB panel: ESP_ERR_NO_MEM`
+- Warning: Flash size mismatch (e.g., `Detected size(16384k) larger than size in binary image header(2048k)`)
+- Screen stays black
+
+**Cause:** Stale or manually-edited `sdkconfig` file missing critical PSRAM/flash configurations.
+
+**Solution:**
+```bash
+# Delete stale config
+rm -f sdkconfig sdkconfig.old
+
+# Regenerate from sdkconfig.defaults
+idf.py set-target esp32s3
+
+# Build with correct configuration
+idf.py build
+```
+
+**Prevention:** Never manually edit `sdkconfig`. Use `sdkconfig.defaults` or `idf.py menuconfig` instead.
+
 ### Build fails
 - Check ESP-IDF version: `idf.py --version` (should be 5.2.x)
 - Try: `idf.py fullclean && idf.py build`
@@ -119,6 +143,7 @@ idf.py build
 - Check power supply (panel needs adequate current)
 - Verify boot logs show successful init
 - Check ESP-IDF version matches 5.2.0
+- If you see ESP_ERR_NO_MEM errors, see "Memory allocation failure" above
 
 ### "Jumping text" (Milestone 2)
 - This is a known issue if GT911 touch is initialized without proper reset
