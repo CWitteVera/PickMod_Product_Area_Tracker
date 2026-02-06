@@ -95,6 +95,18 @@ Must be present in serial output:
 
 ## Common Issues
 
+### Build fails: 'lv_font_montserrat_24' undeclared
+
+**Cause:** The LVGL font configuration in `sdkconfig` doesn't match `sdkconfig.defaults`.
+
+**Solution:**
+```bash
+# Delete old config and rebuild
+rm -f sdkconfig sdkconfig.old
+idf.py set-target esp32s3
+idf.py build
+```
+
 ### Build fails
 - Check ESP-IDF version: `idf.py --version` (should be 5.2.x)
 - Try: `idf.py fullclean && idf.py build`
