@@ -247,9 +247,9 @@ error: invalid use of incomplete typedef 'lv_event_t' {aka 'struct _lv_event_t'}
 # Pull latest changes
 git pull
 
-# Clean managed components and build cache
-rm -rf managed_components/
-rm -rf build/
+# Clean managed components, build cache, and stale lock file
+rm -rf managed_components/ build/
+rm -f dependencies.lock
 
 # Reconfigure (downloads components with new version constraints)
 idf.py set-target esp32s3

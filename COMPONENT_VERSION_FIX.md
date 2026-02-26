@@ -76,9 +76,9 @@ git pull
 
 ### Step 2: Clean Managed Components
 ```bash
-# Remove any cached managed components
-rm -rf managed_components/
-rm -rf build/
+# Remove cached managed components, build output, and stale lock file
+rm -rf managed_components/ build/
+rm -f dependencies.lock
 ```
 
 ### Step 3: Reconfigure and Build
