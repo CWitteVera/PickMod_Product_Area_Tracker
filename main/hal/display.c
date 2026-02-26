@@ -94,9 +94,13 @@ static lv_disp_drv_t lvgl_disp_drv;
 #define I2C_MASTER_FREQ_HZ      100000
 #define I2C_MASTER_TIMEOUT_MS   1000
 
-/* CH422G I/O expander */
-#define CH422G_I2C_ADDR         0x24
-#define CH422G_REG_OUT          0x02  // Output register
+/* CH422G I/O expander - uses multiple 7-bit I2C addresses for different operations.
+ * The chip encodes the register in the I2C address itself (non-standard protocol).
+ * 7-bit addrs derived from 8-bit wire addresses: 0x24>>1=0x12, 0x44>>1=0x22, 0x46>>1=0x23
+ */
+#define CH422G_I2C_ADDR_SET_SYS (0x12)  /* 8-bit 0x24: Set system parameter */
+#define CH422G_I2C_ADDR_SET_OEN (0x22)  /* 8-bit 0x44: Set output enable register */
+#define CH422G_I2C_ADDR_SET_OUT (0x23)  /* 8-bit 0x46: Set IO output values */
 
 /* CH422G EXIO bit mapping for Waveshare ESP32-S3 Touch LCD 7" */
 #define CH422G_EXIO1_BIT        (1 << 0)  // TP_RST (touch reset)
@@ -134,20 +138,46 @@ static esp_err_t i2c_master_init(void)
 }
 
 /**
+ * @brief Initialize CH422G output enable register
+ *
+ * Must be called once before writing output values.
+ * Sets all IO pins to output mode.
+ *
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t ch422g_init_oen(void)
+{
+    uint8_t oen = 0xFF;  /* Enable all IO pins as outputs */
+    esp_err_t ret = i2c_master_write_to_device(
+        I2C_MASTER_NUM,
+        CH422G_I2C_ADDR_SET_OEN,
+        &oen,
+        1,
+        pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS)
+    );
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "CH422G OEN init failed: %s", esp_err_to_name(ret));
+    }
+    return ret;
+}
+
+/**
  * @brief Write to CH422G output register
- * 
+ *
+ * The CH422G encodes the target register in the I2C device address.
+ * Output writes use 7-bit address 0x23 (8-bit wire address 0x46).
+ * Only one data byte is sent (no register address byte).
+ *
  * @param value Output value (bit 0=EXIO1, bit 1=EXIO2, bit 2=EXIO3)
  * @return ESP_OK on success, error code otherwise
  */
 static esp_err_t ch422g_write_output(uint8_t value)
 {
-    uint8_t write_buf[2] = {CH422G_REG_OUT, value};
-    
     esp_err_t ret = i2c_master_write_to_device(
         I2C_MASTER_NUM,
-        CH422G_I2C_ADDR,
-        write_buf,
-        sizeof(write_buf),
+        CH422G_I2C_ADDR_SET_OUT,
+        &value,
+        1,
         pdMS_TO_TICKS(I2C_MASTER_TIMEOUT_MS)
     );
     
@@ -169,12 +199,19 @@ static esp_err_t ch422g_write_output(uint8_t value)
 static esp_err_t backlight_init(void)
 {
     ESP_LOGI(TAG, "Initializing backlight via CH422G EXIO2");
-    
+
+    /* Initialize CH422G output enable register before writing output values */
+    esp_err_t ret = ch422g_init_oen();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize CH422G OEN");
+        return ret;
+    }
+
     /* Set EXIO2 (backlight) high, keep EXIO1 (TP_RST) and EXIO3 (LCD_RST) high
      * to avoid holding touch controller or LCD in reset state */
     uint8_t output_value = CH422G_EXIO1_BIT | CH422G_EXIO2_BIT | CH422G_EXIO3_BIT;
     
-    esp_err_t ret = ch422g_write_output(output_value);
+    ret = ch422g_write_output(output_value);
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Backlight enabled (EXIO2=1)");
     } else {
