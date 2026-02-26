@@ -91,11 +91,8 @@ idf.py -p /dev/ttyUSB0 flash monitor
 
 ### Expected Output (Milestone 2)
 
-The display should show a centered label with:
-- Text: "PickMod Product Area Tracker / Milestone 2: LVGL v8 Test / 800x480 RGB Direct-Mode"
-- Dark blue-gray background (#2E3440)
-- White text (#ECEFF4)
-- Montserrat 24pt font
+The display shows the **LVGL v8 Widgets Demo** (`lv_demo_widgets`), which showcases all
+built-in LVGL widgets (buttons, sliders, charts, labels, etc.) rendered on the 800×480 panel.
 
 **Expected serial logs:**
 ```
@@ -113,17 +110,14 @@ I (xxx) display: LVGL display registered (direct-mode rendering)
 I (xxx) display: Buffer size: 40000 pixels (double buffered)
 I (xxx) display: LVGL initialization complete
 I (xxx) main: LVGL initialized successfully
-I (xxx) main: Test label created and centered
-I (xxx) main: Status check: 10 seconds elapsed
-I (xxx) main: Status check: 60 seconds elapsed
-I (xxx) main: 60 seconds completed - Milestone 2 stability test PASSED
+I (xxx) main: LVGL widgets demo started
+I (xxx) main: Running - LVGL widgets demo active
 ```
 
 **Validation criteria:**
-- Label remains perfectly stable (no "jumping" text)
+- Widgets demo renders correctly (buttons, sliders, charts, etc.)
 - No flicker or tearing
-- Text clearly readable and properly centered
-- Stable for ≥60 seconds
+- Demo is interactive when touch is connected (Milestone 3+)
 - Logs show "direct-mode", "avoid lcd tearing", and "single task, mutex enabled"
 
 ## Configuration
@@ -134,7 +128,8 @@ Key settings in `sdkconfig.defaults`:
 - Compiler optimization: Performance mode
 - LCD RGB ISR: IRAM-safe
 - LCD timing: Based on Espressif EV-Board LVGL demo
-- LVGL Fonts: Montserrat 14 and 24 enabled
+- LVGL Fonts: Montserrat 12, 14, 16, 18, 20, 22, 24, 28 enabled (required by lv_demo_widgets)
+- LVGL Demo: `lv_demo_widgets` enabled (`CONFIG_LV_USE_DEMO_WIDGETS=y`)
 
 ### Troubleshooting
 
@@ -232,7 +227,7 @@ idf.py -p /dev/ttyUSB0 flash monitor
 
 For detailed technical information about this fix, see [WATCHDOG_FIX.md](WATCHDOG_FIX.md).
 
-**Memory Consumption Note:** LVGL demos are explicitly disabled. The ~900KB memory usage is normal for an 800×480 RGB565 display with double-buffered rendering.
+**Memory Consumption Note:** The LVGL widgets demo (`lv_demo_widgets`) is enabled. The ~900KB memory usage is normal for an 800×480 RGB565 display with double-buffered rendering. Additional fonts (12, 16, 18, 20, 22, 28) increase flash usage slightly.
 
 #### Component Version Conflict (LVGL v8/v9 Incompatibility)
 
