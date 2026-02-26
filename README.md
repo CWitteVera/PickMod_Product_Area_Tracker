@@ -4,9 +4,12 @@ Product area tracking system for Waveshare ESP32-S3 Touch LCD 7" (800×480 RGB p
 
 ## 🔧 Quick Fixes
 
+**Screen is blank?** → See [BACKLIGHT_FIX.md](BACKLIGHT_FIX.md) - Backlight control via CH422G added
+
 **Just got a build error after changing menuconfig?** → See [BUILD_ERROR_FIX_SUMMARY.md](BUILD_ERROR_FIX_SUMMARY.md)
 
 **Common Issues:**
+- Screen blank: Backlight not enabled → [Backlight fix](BACKLIGHT_FIX.md)
 - Build error: `invalid use of incomplete typedef 'lv_event_t'` → [Component version fix](BUILD_ERROR_FIX_SUMMARY.md)
 - Font error: `'lv_font_montserrat_24' undeclared` → [Font configuration](#font-configuration-issues)
 - Watchdog timeout: LVGL task frozen → [Watchdog fix](WATCHDOG_FIX.md)
@@ -96,6 +99,9 @@ The display should show a centered label with:
 
 **Expected serial logs:**
 ```
+I (xxx) display: I2C master initialized (SDA=17, SCL=18)
+I (xxx) display: Initializing backlight via CH422G EXIO2
+I (xxx) display: Backlight enabled (EXIO2=1)
 I (xxx) display: Initializing RGB LCD panel (800x480)
 I (xxx) display: Configuring for avoid lcd tearing effect
 I (xxx) display: RGB LCD panel initialized successfully

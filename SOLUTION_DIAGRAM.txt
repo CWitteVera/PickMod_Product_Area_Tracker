@@ -1,0 +1,110 @@
+================================================================================
+                     BLANK SCREEN FIX - SOLUTION DIAGRAM
+================================================================================
+
+PROBLEM:
+--------
+Display Hardware: ✅ Initialized
+RGB Panel:        ✅ Working
+LVGL:             ✅ Running
+Test Label:       ✅ Created
+Screen Output:    ❌ BLANK (No backlight!)
+
+
+ROOT CAUSE:
+-----------
+                         ESP32-S3
+                            |
+                            | I2C (SDA=17, SCL=18)
+                            |
+                      [CH422G @ 0x24]
+                            |
+                    +-------+-------+
+                    |       |       |
+                 EXIO1   EXIO2   EXIO3
+              (TP_RST)  (DISP)  (LCD_RST)
+                          |
+                          └──> BACKLIGHT CONTROL ❌ Not initialized!
+
+
+SOLUTION:
+---------
+                         ESP32-S3
+                            |
+           ┌────────────────┴────────────────┐
+           |                                 |
+        [RGB Panel]                    [I2C Master] ← NEW!
+           |                                 |
+    800x480 display               I2C Bus (100kHz) ← NEW!
+           |                                 |
+      ✅ Working                    [CH422G @ 0x24] ← NEW!
+                                            |
+                                    +-------+-------+
+                                    |       |       |
+                                 EXIO1   EXIO2   EXIO3
+                              (TP_RST)  (DISP)  (LCD_RST)
+                                          |
+                                   ✅ SET HIGH (1) ← THE FIX!
+                                          |
+                                      BACKLIGHT ON!
+
+
+CODE FLOW:
+----------
+app_main()
+    └─> display_init()
+            ├─> i2c_master_init()           ← NEW! Initialize I2C
+            ├─> backlight_init()            ← NEW! Turn on EXIO2
+            │       └─> ch422g_write_output(0x07)  ← Write 0b00000111
+            │           (EXIO1=1, EXIO2=1, EXIO3=1)
+            │
+            ├─> esp_lcd_new_rgb_panel()     ← Existing
+            ├─> esp_lcd_panel_init()        ← Existing
+            └─> ...
+
+
+RESULT:
+-------
+Before Fix:                After Fix:
+┌─────────────────┐       ┌─────────────────┐
+│                 │       │  PickMod Product│
+│   BLACK SCREEN  │  ==>  │  Area Tracker   │
+│   (Backlight    │       │  Milestone 2    │
+│    not on)      │       │  LVGL v8 Test   │
+│                 │       │  800x480 RGB    │
+└─────────────────┘       └─────────────────┘
+    ❌ BLANK                  ✅ VISIBLE!
+
+
+KEY FILES MODIFIED:
+-------------------
+main/hal/display.c:
+  + #include "driver/i2c.h"
+  + I2C and CH422G definitions
+  + i2c_master_init()        (34 lines)
+  + ch422g_write_output()    (18 lines)
+  + backlight_init()         (15 lines)
+  + Updated display_init()   (15 lines)
+  
+Total: 112 lines added to display.c
+
+
+TESTING:
+--------
+1. Build: idf.py build
+2. Flash: idf.py -p /dev/ttyUSB0 flash monitor
+3. Look for these new log messages:
+   ✅ "I2C master initialized (SDA=17, SCL=18)"
+   ✅ "Initializing backlight via CH422G EXIO2"
+   ✅ "Backlight enabled (EXIO2=1)"
+4. Visual check: Display should show test label with backlight on
+
+
+BONUS:
+------
+This also sets up the I2C infrastructure needed for Milestone 3 (Touch):
+- I2C master is ready
+- CH422G communication functions are ready
+- Just need to pulse EXIO1 for GT911 touch reset in Milestone 3!
+
+================================================================================
