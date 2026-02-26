@@ -26,11 +26,11 @@ Product area tracking system for Waveshare ESP32-S3 Touch LCD 7" (800×480 RGB p
 
 ## Project Status
 
-Current milestone: **Milestone 2 - LVGL v8 Minimal Label**
+Current milestone: **Milestone 2 - LVGL v8 Demo Widgets** ✅
 
 ### Milestones
 - [x] **Milestone 1**: Panel-only RGB bring-up with test patterns (no LVGL, no touch) ✅
-- [ ] **Milestone 2**: LVGL v8 minimal label (no touch) - **IN TESTING**
+- [x] **Milestone 2**: LVGL v8 demo widgets (lv_demo_widgets, no touch) ✅
 - [ ] **Milestone 3**: Touch bring-up with CH422G reset sequence
 - [ ] **Milestone 4**: EEZ Studio UI integration (Home/Setup screens)
 
